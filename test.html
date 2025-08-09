@@ -1,0 +1,19 @@
+<style>
+    .box:hover {
+      transform: scale(1.05);
+      cursor: pointer;
+    }
+  </style>
+  
+  <svg id="giftBox" class="box" width="200" height="200" viewBox="0 0 100 100">
+    <rect x="10" y="30" width="80" height="60" fill="#f5a623" rx="10"/>
+    <rect x="10" y="30" width="80" height="10" fill="#ffcc00" rx="3"/>
+    <text x="50" y="65" font-size="18" fill="#fff" text-anchor="middle">🎁</text>
+  </svg>
+  
+  <script>
+    document.getElementById('giftBox').addEventListener('click', function () {
+      alert("🎉 恭喜你！你获得了 Secret Gift！");
+    });
+  </script>
+  
