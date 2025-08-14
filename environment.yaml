@@ -29,3 +29,6 @@ dependencies:
     - discopy
     - langchain-community
     - langchain-text-splitters
+    - trafilatura
+    - langdetect
+    - hanzidentifier
