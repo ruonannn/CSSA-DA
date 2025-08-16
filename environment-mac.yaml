@@ -1,0 +1,33 @@
+name: cssa-ai
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.12
+  - mypy
+  - matplotlib
+  - numpy
+  - pandas
+  - ipykernel
+  - jupyter
+  - scikit-learn
+  - nltk
+  - gensim
+  - ipython
+  - transformers
+  - faiss-cpu>=1.7.4
+  - tqdm
+  - pip
+  - pip:
+      - torch
+      - torchaudio
+      - torchvision
+      - sentence_transformers
+      - accelerate==1.6.0
+      - rank-bm25==0.2.2
+      - discopy
+      - langchain-community
+      - langchain-text-splitters
+      - trafilatura
+      - langdetect
+      - hanzidentifier
