@@ -2,7 +2,7 @@
 1. 使用anaconda作为环境管理方式
 2. 打开terminal（打开 anaconda prompt 如果你是Windows用户）
 3. Navigate到CSSA-DA文件夹
-3. 运行conda env create -f environment.yml
+3. 运行conda env create -f environment.yaml
 4. 运行conda activate cssa-ai来激活当前环境（或者直接在vscode中选择）
 5. 后续更新环境运行conda env update -f environment.yaml --prune
 
