@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class GeneratorModule:
-    def __init__(self, model_name="gpt-4o-mini", temperature=0.3):
+    def __init__(self, model_name="gpt-5-nano", temperature=0.3):
         # LangChain封装
         self.llm = ChatOpenAI(
             model=model_name,
@@ -79,4 +79,4 @@ if __name__ == "__main__":
     user_query = "在墨尔本如何办理公交卡"
     print("\n=== 最终回答 ===")
     answer = generator.generate_answer(user_query, mock_context)
-    print("\n", answer)
+    # print("\n", answer)
