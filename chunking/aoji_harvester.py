@@ -12,8 +12,9 @@ from urllib.parse import urljoin
 def extract_aoji_links():
     links = []
     # Start from the provided article ID and increment upwards
-    start_id = 2745071
+    start_id = 2745094
     max_pages = 1000  # Limit to prevent infinite loops
+    consecutive_failures = 0  # Track consecutive failures to decide early stop
     
     for i in range(max_pages):
         article_id = start_id + i
@@ -33,22 +34,22 @@ def extract_aoji_links():
                 if title and '404' not in title.text and 'error' not in title.text.lower():
                     links.append(url)
                     print(f'Found valid article: {url}')
+                    # Reset failure counter on success
+                    consecutive_failures = 0
                 else:
                     print(f'Page {article_id} appears to be invalid or 404')
-                    # If we hit a 404, we might have reached the end of valid articles
-                    # Continue for a few more to be sure
-                    if i > 10:  # After 10 consecutive invalid pages, stop
-                        break
+                    consecutive_failures += 1
             else:
                 print(f'HTTP {resp.status_code} for {url}')
-                if resp.status_code == 404:
-                    # If we hit a 404, we might have reached the end of valid articles
-                    if i > 10:  # After 10 consecutive 404s, stop
-                        break
+                consecutive_failures += 1
         except Exception as e:
             print(f'Error accessing {url}: {e}')
-            if i > 10:  # After 10 consecutive errors, stop
-                break
+            consecutive_failures += 1
+
+        # Stop after 10 consecutive failures of any kind
+        if consecutive_failures >= 10:
+            print('Stopping after 10 consecutive failures')
+            break
     
     return links
 
@@ -159,9 +160,20 @@ def main():
     # Write the JSON file
     output_file = os.path.join(data_dir, "aoji.json")
     try:
+        # Load existing data if file exists
+        existing_data = []
+        if os.path.exists(output_file):
+            with open(output_file, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+            print(f"Loaded {len(existing_data)} existing articles")
+        
+        # Combine existing and new data
+        all_data = existing_data + json_list
+        
+        # Write combined data
         with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(json_list, f, ensure_ascii=False, indent=2)
-        print(f"Successfully wrote {len(json_list)} articles to {output_file}")
+            json.dump(all_data, f, ensure_ascii=False, indent=2)
+        print(f"Successfully wrote {len(all_data)} total articles to {output_file} ({len(json_list)} new articles added)")
     except Exception as e:
         print(f"Error writing to {output_file}: {e}")
         # Try writing to current directory as fallback
