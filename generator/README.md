@@ -1,9 +1,17 @@
-模块二：Retriever
-模块目标：给定一个query提取k个可能的回答
-模块步骤：
-1. 调用hugging face模型将json的问题encode成vector
-2. 构建FAISS数据库
-3. 使用FAISS内置功能retrieve k 个最相近的问题
-4. 找到对应的json并返还
-注意事项：
-1. 现阶段使用100条手动收集的数据进行该模块
+## 模块三：Generator
+
+**模块目标：**  
+给定几个 json 和 query，使用 langchain 生成合适的回复  
+
+---
+
+### 模块步骤：
+- 使用 langchain 来调用 llm 生成回复  
+- 使用 langchain 的 memory 功能来存储当前聊天记忆  
+- 使用 langchain 来实现逐字输出回复功能  
+- 使用 langchain 来实现监测 api 调用情况  
+
+---
+
+### 注意事项：
+- 
