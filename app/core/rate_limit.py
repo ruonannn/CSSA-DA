@@ -56,8 +56,13 @@ def global_rate_limit_key() -> str:
 
     The per-IP limit can be dodged by rotating IPs; this layer caps total
     spend regardless of how many addresses the traffic comes from
-    (ROADMAP_platform.md 19.4). slowapi calls a route-level key_func with no
-    arguments (unlike the limiter-level default, which receives the request).
+    (ROADMAP_platform.md 19.4).
+
+    Takes no arguments because it needs none — not because route-level key
+    funcs are argument-free. slowapi inspects the signature and passes the
+    request only when it finds a parameter named `request`
+    (slowapi/extension.py); chat_rate_limit_key, on this same route, has one
+    and does receive it.
     """
     return "global"
 
