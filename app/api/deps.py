@@ -65,11 +65,16 @@ def require_caller(
     # The "ip:" prefix looks redundant while addresses are the only source of
     # keys. It is here because v2 adds "user:<id>": without a prefix, a user
     # whose id happened to be 10.0.0.5 would share a bucket with that address.
-    return Principal(
+    principal = Principal(
         kind="internal",
         user_id=None,
         rate_limit_key=f"ip:{get_remote_address(request)}",
     )
+    # Also published on request.state because the rate limiter cannot reach a
+    # dependency's return value: slowapi wraps the endpoint from outside, so
+    # it only ever sees the request. See chat_rate_limit_key.
+    request.state.principal = principal
+    return principal
 
 
 @lru_cache(maxsize=1)

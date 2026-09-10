@@ -31,6 +31,7 @@ from app.core.middleware import (
 from app.core.rate_limit import (
     chat_global_rate_limit,
     chat_rate_limit,
+    chat_rate_limit_key,
     global_rate_limit_key,
     limiter,
     validate_rate_limit_config,
@@ -254,7 +255,7 @@ def status(
 # docs/design/implemented/global-rate-limit.md and
 # test_per_ip_429s_do_not_burn_the_global_budget).
 @limiter.limit(chat_global_rate_limit, key_func=global_rate_limit_key)
-@limiter.limit(chat_rate_limit)
+@limiter.limit(chat_rate_limit, key_func=chat_rate_limit_key)
 def chat(
     request: Request,  # required by slowapi (looked up by this exact name)
     payload: ChatRequest,
