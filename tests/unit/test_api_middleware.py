@@ -4,7 +4,7 @@ import logging
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_rag_orchestrator, require_internal_api_key
+from app.api.deps import get_rag_orchestrator, require_caller
 from app.core.config import settings
 from app.core.logging import AppJsonLogFormatter
 from app.core.middleware import SECURITY_HEADERS
@@ -56,7 +56,7 @@ def client() -> TestClient:
     app.dependency_overrides[get_rag_orchestrator] = lambda: (
         LoggingOrchestrator()
     )
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
     return TestClient(app)
 
 
@@ -177,7 +177,7 @@ def test_security_headers_present_on_error():
     app.dependency_overrides[get_rag_orchestrator] = lambda: (
         FailingOrchestrator()
     )
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
     response = TestClient(app).post(
         "/v1/chat",
         json={"message": "How do I enrol?"},
@@ -324,7 +324,7 @@ def test_catch_all_handler_returns_safe_500():
     app.dependency_overrides[get_rag_orchestrator] = lambda: (
         UnexpectedlyFailingOrchestrator()
     )
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
     # raise_server_exceptions=False lets the registered handler produce the
     # response instead of the TestClient re-raising the exception.
     response = TestClient(app, raise_server_exceptions=False).post(

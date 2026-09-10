@@ -16,10 +16,11 @@ from pydantic import BaseModel, Field
 from slowapi.errors import RateLimitExceeded
 
 from app.api.deps import (
+    Principal,
     close_rag_orchestrator,
     get_rag_orchestrator,
     preload_rag_orchestrator,
-    require_internal_api_key,
+    require_caller,
 )
 from app.core.config import settings
 from app.core.logging import configure_app_logging
@@ -239,7 +240,7 @@ def ready() -> JSONResponse:
 
 @app.get("/status", tags=["system"])
 def status(
-    _: Annotated[None, Depends(require_internal_api_key)],
+    caller: Annotated[Principal, Depends(require_caller)],
 ) -> dict:
     return get_system_status().to_dict()
 
@@ -258,7 +259,7 @@ def chat(
     request: Request,  # required by slowapi (looked up by this exact name)
     payload: ChatRequest,
     background_tasks: BackgroundTasks,
-    _: Annotated[None, Depends(require_internal_api_key)],
+    caller: Annotated[Principal, Depends(require_caller)],
     orchestrator: Annotated[RAGOrchestrator, Depends(get_rag_orchestrator)],
 ) -> ChatResponse:
     answer, sources = orchestrator.run(

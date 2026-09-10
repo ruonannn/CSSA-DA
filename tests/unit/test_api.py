@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock
 
-from app.api.deps import get_rag_orchestrator, require_internal_api_key
+from app.api.deps import get_rag_orchestrator, require_caller
 from app.core.config import settings
 from app.main import app
 from app.schemas.article import Article
@@ -52,7 +52,7 @@ class FailingOrchestrator:
 
 def client() -> TestClient:
     app.dependency_overrides[get_rag_orchestrator] = lambda: StubOrchestrator()
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
     return TestClient(app)
 
 
@@ -398,7 +398,7 @@ def test_chat_returns_safe_service_errors(
     app.dependency_overrides[get_rag_orchestrator] = lambda: (
         FailingOrchestrator(error)
     )
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
 
     response = TestClient(app).post(
         "/v1/chat",
@@ -473,7 +473,7 @@ def test_chat_does_not_record_when_the_pipeline_failed(monkeypatch):
     app.dependency_overrides[get_rag_orchestrator] = lambda: (
         FailingOrchestrator(RetrievalUnavailableError("boom"))
     )
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
 
     response = TestClient(app).post(
         "/v1/chat",
