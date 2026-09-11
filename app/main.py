@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 import logging
 from typing import Annotated, Literal
 
@@ -7,9 +8,11 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     FastAPI,
+    HTTPException,
     Request,
     status as http_status,
 )
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -120,6 +123,63 @@ def _service_error_response(
             "error": {
                 "code": error.code,
                 "message": error.public_message,
+            }
+        },
+    )
+
+
+# FastAPI/Starlette's built-in handlers for these two return {"detail": ...},
+# which breaks the {"error": {code, message}} contract every other handler in
+# this file follows. Registering our own for the same exception classes
+# replaces those defaults (Starlette resolves handlers by MRO, and these are
+# exact matches for what get raised).
+def _http_status_error_code(status_code: int) -> str:
+    try:
+        phrase = HTTPStatus(status_code).phrase
+    except ValueError:
+        phrase = "error"
+    return phrase.lower().replace(" ", "_").replace("-", "_")
+
+
+@app.exception_handler(RequestValidationError)
+def handle_validation_error(
+    _: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    # Field errors carry an "input" entry that echoes the request body back
+    # verbatim; for a 20-item chat_history that's the entire oversized
+    # payload. Keep loc/msg/type (useful for debugging, derived only from
+    # field constraints) and drop input.
+    details = [
+        {key: value for key, value in error.items() if key in ("loc", "msg", "type")}
+        for error in exc.errors()
+    ]
+    logger.warning("Request validation failed: %s", details)
+    return JSONResponse(
+        status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Request failed validation.",
+                "details": details,
+            }
+        },
+    )
+
+
+@app.exception_handler(HTTPException)
+def handle_http_exception(
+    _: Request,
+    exc: HTTPException,
+) -> JSONResponse:
+    logger.warning("HTTP exception: %s %s", exc.status_code, exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content={
+            "error": {
+                "code": _http_status_error_code(exc.status_code),
+                "message": exc.detail,
             }
         },
     )
