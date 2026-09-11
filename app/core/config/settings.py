@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     # counter resets on process restart.
     CHAT_GLOBAL_RATE_LIMIT: str = "500/day"
 
+    # Rejects a request before its body is read/parsed (and therefore before
+    # auth, which FastAPI resolves after body parsing) once it exceeds this
+    # many bytes. ChatRequest's field caps (message 10k + chat_history 20 x
+    # 4k chars, UTF-8 worst case ~3 bytes/char) bound a legitimate request to
+    # ~270KB; 512KB leaves headroom without letting an unauthenticated caller
+    # make the server buffer/parse an arbitrarily large body.
+    MAX_REQUEST_BODY_BYTES: int = 512 * 1024
+
     # Deploy-time coordinates stamped onto every chat_interactions row's
     # config fingerprint (ROADMAP_rag.md Phase 4.5). Optional: unset means the
     # fingerprint records null, which is honest. GIT_SHA is the "which code"

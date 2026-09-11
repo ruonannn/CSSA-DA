@@ -24,6 +24,8 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.logging import configure_app_logging
 from app.core.middleware import (
+    MaxBodySizeMiddleware,
+    RequestBodyTooLargeError,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -90,11 +92,16 @@ app.state.limiter = limiter
 
 # Starlette wraps middleware in reverse: the LAST add_middleware call becomes
 # the OUTERMOST layer (runs first on requests, last on responses).
-# Order (outermost -> innermost): CORS > SecurityHeaders > RequestContext.
-# CORS is outermost so preflight OPTIONS requests are answered before entering
-# the stack and CORS headers land on every response, including error responses.
+# Order (outermost -> innermost): CORS > MaxBodySize > SecurityHeaders >
+# RequestContext. CORS stays outermost so preflight OPTIONS requests are
+# answered before entering the rest of the stack and CORS headers land on
+# every response, including error responses — that includes MaxBodySize's
+# fast-path 413, which is why MaxBodySize sits just inside it rather than
+# outside. MaxBodySize is still outside SecurityHeaders/RequestContext so an
+# oversized body never reaches routing, parsing, or auth.
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(MaxBodySizeMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
@@ -120,6 +127,28 @@ def _service_error_response(
             "error": {
                 "code": error.code,
                 "message": error.public_message,
+            }
+        },
+    )
+
+
+@app.exception_handler(RequestBodyTooLargeError)
+def handle_request_body_too_large(
+    _: Request,
+    exc: RequestBodyTooLargeError,
+) -> JSONResponse:
+    # A chunked request has no Content-Length for the middleware to reject
+    # upfront, so this fires once its streamed byte count crosses the limit.
+    logger.warning(
+        "Rejecting oversized chunked request body: %s bytes",
+        exc.received_bytes,
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": "payload_too_large",
+                "message": exc.detail,
             }
         },
     )
