@@ -16,10 +16,11 @@ from pydantic import BaseModel, Field
 from slowapi.errors import RateLimitExceeded
 
 from app.api.deps import (
+    Principal,
     close_rag_orchestrator,
     get_rag_orchestrator,
     preload_rag_orchestrator,
-    require_internal_api_key,
+    require_caller,
 )
 from app.core.config import settings
 from app.core.logging import configure_app_logging
@@ -30,6 +31,7 @@ from app.core.middleware import (
 from app.core.rate_limit import (
     chat_global_rate_limit,
     chat_rate_limit,
+    chat_rate_limit_key,
     global_rate_limit_key,
     limiter,
     validate_rate_limit_config,
@@ -239,7 +241,7 @@ def ready() -> JSONResponse:
 
 @app.get("/status", tags=["system"])
 def status(
-    _: Annotated[None, Depends(require_internal_api_key)],
+    caller: Annotated[Principal, Depends(require_caller)],
 ) -> dict:
     return get_system_status().to_dict()
 
@@ -253,12 +255,12 @@ def status(
 # docs/design/implemented/global-rate-limit.md and
 # test_per_ip_429s_do_not_burn_the_global_budget).
 @limiter.limit(chat_global_rate_limit, key_func=global_rate_limit_key)
-@limiter.limit(chat_rate_limit)
+@limiter.limit(chat_rate_limit, key_func=chat_rate_limit_key)
 def chat(
     request: Request,  # required by slowapi (looked up by this exact name)
     payload: ChatRequest,
     background_tasks: BackgroundTasks,
-    _: Annotated[None, Depends(require_internal_api_key)],
+    caller: Annotated[Principal, Depends(require_caller)],
     orchestrator: Annotated[RAGOrchestrator, Depends(get_rag_orchestrator)],
 ) -> ChatResponse:
     answer, sources = orchestrator.run(
