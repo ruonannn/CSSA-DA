@@ -357,6 +357,28 @@ def test_chat_rejects_invalid_or_missing_api_key(
     }
 
 
+def test_an_unmatched_route_uses_the_shared_error_shape():
+    # Starlette raises its own HTTPException base class for these, not
+    # FastAPI's subclass. Registering the handler on the subclass leaves them
+    # on {"detail": ...} while every other failure uses the shared shape, and
+    # nothing else in this suite would notice.
+    response = TestClient(app).get("/no-such-route")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {"code": "not_found", "message": "Not Found"}
+    }
+
+
+def test_a_wrong_method_uses_the_shared_error_shape():
+    response = TestClient(app).delete("/v1/chat")
+
+    assert response.status_code == 405
+    assert response.json() == {
+        "error": {"code": "method_not_allowed", "message": "Method Not Allowed"}
+    }
+
+
 def test_chat_returns_503_when_api_key_is_not_configured(monkeypatch):
     monkeypatch.setattr(settings, "CHAT_API_KEY", None)
     app.dependency_overrides[get_rag_orchestrator] = lambda: StubOrchestrator()

@@ -8,13 +8,13 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     FastAPI,
-    HTTPException,
     Request,
     status as http_status,
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
 from slowapi.errors import RateLimitExceeded
 
@@ -132,9 +132,16 @@ def _service_error_response(
 
 # FastAPI/Starlette's built-in handlers for these two return {"detail": ...},
 # which breaks the {"error": {code, message}} contract every other handler in
-# this file follows. Registering our own for the same exception classes
-# replaces those defaults (Starlette resolves handlers by MRO, and these are
-# exact matches for what get raised).
+# this file follows. Registering our own replaces those defaults.
+#
+# The HTTPException one is registered on Starlette's class, not FastAPI's
+# subclass of it. Handler lookup walks the MRO of the exception that was
+# actually raised, so registering on the subclass would miss everything
+# Starlette itself raises from its own base class — 404 from an unmatched
+# route and 405 from a wrong method — and those would keep returning
+# {"detail": ...}. Registering on the base covers both, and a more specific
+# registration still wins: RateLimitExceeded also inherits from this class
+# but comes first in its own MRO, so it keeps its "rate_limited" code.
 def _http_status_error_code(status_code: int) -> str:
     try:
         phrase = HTTPStatus(status_code).phrase
@@ -169,10 +176,10 @@ def handle_validation_error(
     )
 
 
-@app.exception_handler(HTTPException)
+@app.exception_handler(StarletteHTTPException)
 def handle_http_exception(
     _: Request,
-    exc: HTTPException,
+    exc: StarletteHTTPException,
 ) -> JSONResponse:
     logger.warning("HTTP exception: %s %s", exc.status_code, exc.detail)
     return JSONResponse(
