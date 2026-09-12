@@ -233,8 +233,56 @@ See [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
 ## Language
 
-Descriptions in Chinese, titles in English. Match the surrounding repo: roadmaps
-and design docs are Chinese, code, commits and anything on GitHub are English.
+**Titles in English. Bodies in both languages** — English first, then a `# 中文`
+section carrying the same content.
+
+Two readerships, and neither can be dropped:
+
+- [CONTRIBUTING.md](../../../CONTRIBUTING.md#language) requires English on GitHub
+  because the repo already receives pull requests from outside the club. An
+  issue nobody outside can read is an issue nobody outside can pick up.
+- The team writes and argues in Chinese, and that is where the reasoning is
+  sharpest. Translating it away costs more than it saves.
+
+So write both. **The two halves must say the same thing** — not a summary in one
+and the detail in the other. If they drift, the Chinese is the one people act on
+and the English is the one that misleads a stranger.
+
+Layout — the whole English body, then a rule, then the whole Chinese body, with
+a one-line pointer at the very top so nobody stops at the halfway mark:
+
+```markdown
+> English first, 中文在下半部分。Both halves say the same thing.
+
+> ⛔ **Blocked** — ...
+
+## What is happening
+...
+## Done criteria
+...
+
+---
+
+# 中文
+
+> ⛔ **Blocked** —— ...
+
+## 现在发生了什么
+...
+## 完成标准
+...
+```
+
+Per-section interleaving was considered and rejected: it doubles the number of
+headings and makes a long issue unreadable in the sidebar's outline.
+
+[#100](https://github.com/CSSA-AI/CSSA-DA/issues/100) is the reference example.
+
+**Everything else on GitHub stays English-only** — pull request titles and
+bodies, review threads, commit messages. The bilingual rule is for issue bodies,
+which are the one artifact a newcomer reads before they have any context.
+
+Documents under `docs/` stay Chinese-only, unchanged.
 
 Pass long bodies to `gh issue create --body-file` (a heredoc or a temp file),
 never as an inline `--body` with escape sequences.
