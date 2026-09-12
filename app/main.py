@@ -97,17 +97,21 @@ app.state.limiter = limiter
 
 # Starlette wraps middleware in reverse: the LAST add_middleware call becomes
 # the OUTERMOST layer (runs first on requests, last on responses).
-# Order (outermost -> innermost): CORS > MaxBodySize > SecurityHeaders >
-# RequestContext. CORS stays outermost so preflight OPTIONS requests are
-# answered before entering the rest of the stack and CORS headers land on
-# every response, including error responses — that includes MaxBodySize's
-# fast-path 413, which is why MaxBodySize sits just inside it rather than
-# outside. MaxBodySize is still outside SecurityHeaders/RequestContext so an
-# oversized body never reaches routing, parsing, or auth.
+# Order (outermost -> innermost): CORS > SecurityHeaders > RequestContext >
+# MaxBodySize. CORS stays outermost so preflight OPTIONS requests are answered
+# before entering the rest of the stack and CORS headers land on every
+# response, including error responses.
+#
+# MaxBodySize is innermost of the four. Its Content-Length fast path answers
+# without invoking anything further in, so every layer whose headers must
+# appear on that 413 has to sit OUTSIDE it — put it outermost and the fast
+# path ships a response with no security headers and no X-Request-ID, unlike
+# every other response the app produces. Being innermost costs it nothing:
+# middleware all run ahead of routing, so an oversized body still never
+# reaches routing, parsing, or auth, and the body is still never read.
+app.add_middleware(MaxBodySizeMiddleware)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(MaxBodySizeMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
