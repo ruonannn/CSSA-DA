@@ -9,7 +9,7 @@ code, it is worse than no document.
 
 | Document | Covers |
 |---|---|
-| [chat-api-hardening.md](chat-api-hardening.md) | `/chat` structured logging, security headers, CORS, rate limiting |
+| [chat-api-hardening.md](chat-api-hardening.md) | `/chat` structured logging, security headers, CORS, rate limiting, the shared error-response contract, and the request body size cap |
 | [global-rate-limit.md](global-rate-limit.md) | Site-wide `/chat` rate limit and the OpenAI spend cap |
 | [retrieval-logging.md](retrieval-logging.md) | What the RAG pipeline logs per stage, and why no user content goes to CloudWatch |
 | [startup-and-readiness.md](startup-and-readiness.md) | What the app does before it accepts traffic: preload, model warm-up, liveness vs readiness, connection timeouts |

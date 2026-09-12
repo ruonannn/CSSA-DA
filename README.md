@@ -173,6 +173,7 @@ Copy `.env.example` to `.env` and fill in:
 | `ALLOWED_ORIGINS` | optional | Comma-separated CORS origins |
 | `CHAT_RATE_LIMIT` | optional | Per-IP `/v1/chat` limit, `10/minute` by default |
 | `CHAT_GLOBAL_RATE_LIMIT` | optional | Site-wide `/v1/chat` limit shared by all clients, `500/day` by default |
+| `MAX_REQUEST_BODY_BYTES` | optional | Request body size cap enforced before parsing/auth, `524288` (512KB) by default |
 
 Check runtime configuration without printing secret values:
 
@@ -242,6 +243,13 @@ stack traces) kept in the logs only: `503` when retrieval, generation, or the RA
 pipeline itself is unavailable, `504` on generation timeout, `429` when rate limited,
 `422` when the request body fails validation (the response includes a `details` array
 with each field's `loc`/`msg`/`type`, but never echoes the offending value back).
+
+Every request body is capped at `MAX_REQUEST_BODY_BYTES` (default 512KB), enforced by
+an ASGI middleware that runs before routing, JSON parsing, or the `X-API-Key` check —
+an unauthenticated caller cannot make the server buffer or parse an oversized body
+before being rejected. A declared `Content-Length` over the limit is rejected
+immediately with `413`; a chunked request with no `Content-Length` is rejected once its
+streamed byte count crosses the limit, before the body is ever fully buffered.
 
 ```bash
 curl -X POST http://localhost:8000/v1/chat \
