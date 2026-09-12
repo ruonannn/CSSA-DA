@@ -236,9 +236,13 @@ The API is available at `http://localhost:8000`, with interactive documentation 
 `/v1/chat` is rate limited on two layers: per client IP (`CHAT_RATE_LIMIT`, default
 `10/minute`) and site-wide across all clients (`CHAT_GLOBAL_RATE_LIMIT`, default
 `500/day`) — rotating IPs cannot get past the shared counter, which caps total OpenAI
-spend. Failures return a stable error shape — `{"error": {"code": ..., "message": ...}}`
-— with internal details kept in the logs only: `503` when retrieval or generation is
-unavailable, `504` on generation timeout, `429` when rate limited.
+spend. Every failure — including `401`/`503` auth errors and `422` validation errors,
+not just the RAG-specific ones — returns the same stable shape,
+`{"error": {"code": ..., "message": ...}}`, with internal details (exception text,
+stack traces) kept in the logs only: `503` when retrieval, generation, or the RAG
+pipeline itself is unavailable, `504` on generation timeout, `429` when rate limited,
+`422` when the request body fails validation (the response includes a `details` array
+with each field's `loc`/`msg`/`type`, but never echoes the offending value back).
 
 Every request body is capped at `MAX_REQUEST_BODY_BYTES` (default 512KB), enforced by
 an ASGI middleware that runs before routing, JSON parsing, or the `X-API-Key` check —

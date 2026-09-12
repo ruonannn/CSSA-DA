@@ -1,5 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 import logging
 from typing import Annotated, Literal
 
@@ -10,8 +11,10 @@ from fastapi import (
     Request,
     status as http_status,
 )
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from pydantic import BaseModel, Field
 from slowapi.errors import RateLimitExceeded
 
@@ -104,6 +107,7 @@ app.state.limiter = limiter
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(MaxBodySizeMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
@@ -129,6 +133,70 @@ def _service_error_response(
             "error": {
                 "code": error.code,
                 "message": error.public_message,
+            }
+        },
+    )
+
+
+# FastAPI/Starlette's built-in handlers for these two return {"detail": ...},
+# which breaks the {"error": {code, message}} contract every other handler in
+# this file follows. Registering our own replaces those defaults.
+#
+# The HTTPException one is registered on Starlette's class, not FastAPI's
+# subclass of it. Handler lookup walks the MRO of the exception that was
+# actually raised, so registering on the subclass would miss everything
+# Starlette itself raises from its own base class — 404 from an unmatched
+# route and 405 from a wrong method — and those would keep returning
+# {"detail": ...}. Registering on the base covers both, and a more specific
+# registration still wins: RateLimitExceeded also inherits from this class
+# but comes first in its own MRO, so it keeps its "rate_limited" code.
+def _http_status_error_code(status_code: int) -> str:
+    try:
+        phrase = HTTPStatus(status_code).phrase
+    except ValueError:
+        phrase = "error"
+    return phrase.lower().replace(" ", "_").replace("-", "_")
+
+
+@app.exception_handler(RequestValidationError)
+def handle_validation_error(
+    _: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    # Field errors carry an "input" entry that echoes the request body back
+    # verbatim; for a 20-item chat_history that's the entire oversized
+    # payload. Keep loc/msg/type (useful for debugging, derived only from
+    # field constraints) and drop input.
+    details = [
+        {key: value for key, value in error.items() if key in ("loc", "msg", "type")}
+        for error in exc.errors()
+    ]
+    logger.warning("Request validation failed: %s", details)
+    return JSONResponse(
+        status_code=http_status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Request failed validation.",
+                "details": details,
+            }
+        },
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+def handle_http_exception(
+    _: Request,
+    exc: StarletteHTTPException,
+) -> JSONResponse:
+    logger.warning("HTTP exception: %s %s", exc.status_code, exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content={
+            "error": {
+                "code": _http_status_error_code(exc.status_code),
+                "message": exc.detail,
             }
         },
     )

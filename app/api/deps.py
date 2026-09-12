@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
+import logging
 import secrets
 from typing import Annotated, Literal
 
@@ -10,6 +11,8 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.services.rag.orchestrator import RAGOrchestrator
 
+
+logger = logging.getLogger(__name__)
 
 chat_api_key_header = APIKeyHeader(
     name="X-API-Key",
@@ -106,9 +109,12 @@ def get_rag_orchestrator() -> RAGOrchestrator:
     try:
         return _build_rag_orchestrator()
     except Exception as exc:
+        # The exception text can contain connection strings, hostnames, or
+        # driver internals — log it, but never put it in the response body.
+        logger.exception("RAG orchestrator is unavailable")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"RAG service is unavailable: {exc}",
+            detail="RAG service is unavailable. Please try again later.",
         ) from exc
 
 

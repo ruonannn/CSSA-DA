@@ -3,7 +3,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_rag_orchestrator, require_internal_api_key
+from app.api.deps import get_rag_orchestrator, require_caller
 from app.core.config import settings
 from app.main import app
 
@@ -25,7 +25,7 @@ def _chat_body(message_len: int) -> bytes:
 
 
 def test_chat_rejects_an_oversized_body_before_auth_runs(monkeypatch):
-    # No API key configured or provided, and require_internal_api_key is NOT
+    # No API key configured or provided, and require_caller is NOT
     # overridden: if the body-size check ran after auth (or not at all), this
     # would come back 401/503, not 413.
     monkeypatch.setattr(settings, "MAX_REQUEST_BODY_BYTES", 100)
@@ -106,7 +106,7 @@ def test_chat_rejects_an_oversized_chunked_body_with_no_content_length(monkeypat
 
 def test_chat_accepts_a_chunked_body_under_the_limit(monkeypatch):
     monkeypatch.setattr(settings, "MAX_REQUEST_BODY_BYTES", 100_000)
-    app.dependency_overrides[require_internal_api_key] = lambda: None
+    app.dependency_overrides[require_caller] = lambda: None
     app.dependency_overrides[get_rag_orchestrator] = lambda: StubOrchestrator()
 
     def chunks():
